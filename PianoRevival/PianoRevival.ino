@@ -2,11 +2,13 @@
 // -------------
 // Abfrage der Matrix-verschalteten Klaviatur des PX-103
 
-char tastenAktiv[180];    // State Vector with pressed Keys
-bool keyPressed = false;  // Flag indicating whether at the current scan a keay was found pressed
+int dauer[88];
 
 void setup() 
 {
+    // noch ist keine Taste gedrückt
+    for(int i=0; i<22; i++) dauer[i] = 0;
+
     // LED als Ausgang
     pinMode(13, OUTPUT);
 
@@ -55,46 +57,54 @@ void setup()
 
 void loop() {
 
-  keyPressed = false;
-  
-  // Iterate over all Output Pins
-  for(int i=22; i<44; i++)
+  // Iterate over all 22 Output Pins
+  int i=0;// for(int i=0; i<22; i++) // todo wieder schleife reinnehmen
   {
-    // Spannung an 8 Spalten der Matrix anlegen
-    digitalWrite(i, HIGH);
-//    delayMicroseconds(10); // Let Voltage settle (ToDo: Minimize!)
-//    delay(100);
-    
-    // Pruefe die 8 Zeilen der Matrix auf Pegel
-    for(int j=2; j<10; j++)
-    {
-      // s steht fuer Schalter und laeuft von 0 bis 175 (=2x88)
-      int s = (i-22)*8+(j-2);
-      
+    delay(1000);
 
-        if(digitalRead(j) == HIGH)
+    // Spannung anlegen, beginnend bei PIN 22 (bis PIN 43)
+    digitalWrite(i+22, HIGH);
+
+    // Pruefe jeweils 4 Tasten mit zwei Schaltern (die an PIN 2 bis 10 hängen)
+    for(int j=0; j<1;j++) // todo wieder bis 4 laufen lassen
+    {
+        bool s1 = (digitalRead(2*j+2) == HIGH);
+        bool s2 = (digitalRead(2*j+3) == HIGH);
+
+        // Schalter 1 nicht gedrückt
+        if(!s1) 
         {
-          digitalWrite(13, HIGH);
-          keyPressed = true;
-          // Taste als aktiv markieren
-          tastenAktiv[s]='*';
+          // Wurde die Taste gerade erst losgelassen? -> Ton zuende
+          if(dauer[i]==-1)
+          {
+            Serial.print("Note off ");
+            Serial.println(i*j);
+          }
+          dauer[i]=0;
         }
+        // Schalter 1 gedrückt aber 2 nicht
+        else if(!s2)
+        {
+          // Dauer hochzählen (wenn nicht schon am Anschlag)
+          if(dauer[i]>-1 && dauer[i]<128) dauer[i]++;
+        }
+        // beide Schalter gedrückt
         else
         {
-          tastenAktiv[s]='-';
+          // Ton ausgeben, falls nicht sehr langsam gedrückt wurde
+          if(dauer[i]>-1 && dauer[i]<128)
+          {
+            Serial.print("Note on ");
+            Serial.print(i*j);
+            Serial.print(" ");
+            Serial.println(dauer[i]);
+            dauer[i]=-1;
+          }
         }
     }
+
     // Spalten wieder spannungsfrei schalten
     digitalWrite(i, LOW);
-//    delay(100);
-//      delayMicroseconds(10); // Let Voltage settle (ToDo: Minimize!)
-//    Serial.println(tastenAktiv);
-//    Serial.write(tastenAktiv, 8);
-//    Serial.println("");
+
   }
-  if(keyPressed == false)
-  {
-    digitalWrite(13,LOW);
-  }
-  
 }
