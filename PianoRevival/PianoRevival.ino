@@ -3,14 +3,16 @@
 // Abfrage der Matrix-verschalteten Klaviatur des PX-103
 
 int dauer[88];
+const int maxDur = 128;
 
 enum State_t
 {
-  NOT_PRESSED,  // 0 Taste nicht gedrückt
-  WAIT,         // 1 Warten auf Schalter 2
-  DETECTED,     // 2 Schalte 2 wurde soeben detektiert
-  PRESSED,      // 3 Taste gedrückt
-  RELEASED      // 4 Taste losgelassen 
+  NOT_PRESSED,
+  COUNTING,
+  TOO_SLOW,
+  TONE_ON,
+  HOLDING,
+  TONE_OFF 
 };
 
 State_t state[88];
@@ -75,55 +77,55 @@ void loop()
   // Iterate over all 22 Output Pins
   for(int s=22; s<44; s++)
   {
-    delayMicroseconds(4);
-
     // Spannung anlegen, beginnend bei PIN 22 (bis PIN 43)
     digitalWrite(s, HIGH);
+    delayMicroseconds(4);
 
     // Pruefe jeweils 4 Tasten mit zwei Schaltern (die an PIN 2 bis 9 hängen)
     for(int j=2,k=3; j<9;j+=2,k+=2)
     {
-        // Schalter 1 nicht gedrückt
-        if(!(digitalRead(j) == HIGH)) 
-        {
-          // Taste gedrückt -> gerade losgelassen
-          if(state[i]==PRESSED) state[i]=RELEASED;
-        }
-        // Schalter 1 gedrückt aber 2 nicht
-        else if(!(digitalRead(k) == HIGH))
-        {
-          if(state[i]==NOT_PRESSED) state[i]=WAIT;
+      bool s1= (digitalRead(j) == HIGH);
+      bool s2= (digitalRead(k) == HIGH);
 
-          // Warten auf Schalter 2, wenn wir auf dem Weg nach unten sind
-          else if(state[i]==WAIT)
-          {
-            // Dauer hochzählen (wenn nicht schon am Maximum)
-            if(dauer[i]<128) dauer[i]++;
-          }
-        }
-        // beide Schalter gedrückt
-        else
-        {
-          // Ton ausgeben
-          if(state[i]==WAIT) state[i]=DETECTED;
-        }
-        i++;
+      switch(state[i])
+      {
+        case NOT_PRESSED:
+          if(s1) state[i]=COUNTING;
+          break;
+        
+        case COUNTING:
+          if(dauer[i]>maxDur) state[i]=TOO_SLOW;
+          else if(!s1)        state[i]=NOT_PRESSED;
+          else if( s2)        state[i]=TONE_ON;
+          else                dauer[i]++;
+          break;
+        
+        case TOO_SLOW:
+          if(!s1) state[i]=NOT_PRESSED;
+          break;
+        
+        case TONE_ON:
+          // todo issue tone - parameter sind notennummer und anschlagstärke
+          dauer[i]=0;
+          state[i]=HOLDING;
+          break;
+        
+        case HOLDING:
+          if(!s1) state[i]=TONE_OFF;
+          break;
+        
+        case TONE_OFF:
+          // todo issue tone off
+          state[i]=NOT_PRESSED;
+          break;
+      }
+      i++;
     }
-    // Spalten wieder spannungsfrei schalten
+    // Spannung an diesem PIN wieder wegnehmen
     digitalWrite(s, LOW);
   }
-
-  for(i=0; i<88; i++)
-  {
-    if(state[i]==DETECTED)
-    {
-      if(dauer[i]<128) { Serial.print(i); Serial.print(","); Serial.println(dauer[i]); }
-      state[i]=PRESSED;
-    }
-    else if(state[i]==RELEASED)
-    {
-      Serial.print(i); Serial.println(",o");
-      state[i]=NOT_PRESSED;
-    }
-  }
 }
+
+
+
+
