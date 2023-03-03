@@ -4,10 +4,23 @@
 
 int dauer[88];
 
+enum State_t
+{
+  NOT_PRESSED,  // 0 Taste nicht gedrückt
+  WAIT,         // 1 Warten auf Schalter 2
+  DETECTED,     // 2 Schalte 2 wurde soeben detektiert
+  PRESSED,      // 3 Taste gedrückt
+  RELEASED      // 4 Taste losgelassen 
+};
+
+State_t state[88];
+
+
 void setup() 
 {
     // noch ist keine Taste gedrückt
-    for(int i=0; i<22; i++) dauer[i] = 0;
+    for(int i=0; i<88; i++) dauer[i] = 0;
+    for(int i=0; i<88; i++) state[i] = NOT_PRESSED;
 
     // LED als Ausgang
     pinMode(13, OUTPUT);
@@ -55,56 +68,62 @@ void setup()
     Serial.println("Start");
 }
 
-void loop() {
+void loop() 
+{
+  int i=0;
 
   // Iterate over all 22 Output Pins
-  int i=0;// for(int i=0; i<22; i++) // todo wieder schleife reinnehmen
+  for(int s=22; s<44; s++)
   {
-    delay(1000);
+    delayMicroseconds(4);
 
     // Spannung anlegen, beginnend bei PIN 22 (bis PIN 43)
-    digitalWrite(i+22, HIGH);
+    digitalWrite(s, HIGH);
 
-    // Pruefe jeweils 4 Tasten mit zwei Schaltern (die an PIN 2 bis 10 hängen)
-    for(int j=0; j<1;j++) // todo wieder bis 4 laufen lassen
+    // Pruefe jeweils 4 Tasten mit zwei Schaltern (die an PIN 2 bis 9 hängen)
+    for(int j=2,k=3; j<9;j+=2,k+=2)
     {
-        bool s1 = (digitalRead(2*j+2) == HIGH);
-        bool s2 = (digitalRead(2*j+3) == HIGH);
-
         // Schalter 1 nicht gedrückt
-        if(!s1) 
+        if(!(digitalRead(j) == HIGH)) 
         {
-          // Wurde die Taste gerade erst losgelassen? -> Ton zuende
-          if(dauer[i]==-1)
-          {
-            Serial.print("Note off ");
-            Serial.println(i*j);
-          }
-          dauer[i]=0;
+          // Taste gedrückt -> gerade losgelassen
+          if(state[i]==PRESSED) state[i]=RELEASED;
         }
         // Schalter 1 gedrückt aber 2 nicht
-        else if(!s2)
+        else if(!(digitalRead(k) == HIGH))
         {
-          // Dauer hochzählen (wenn nicht schon am Anschlag)
-          if(dauer[i]>-1 && dauer[i]<128) dauer[i]++;
+          if(state[i]==NOT_PRESSED) state[i]=WAIT;
+
+          // Warten auf Schalter 2, wenn wir auf dem Weg nach unten sind
+          else if(state[i]==WAIT)
+          {
+            // Dauer hochzählen (wenn nicht schon am Maximum)
+            if(dauer[i]<128) dauer[i]++;
+          }
         }
         // beide Schalter gedrückt
         else
         {
-          // Ton ausgeben, falls nicht sehr langsam gedrückt wurde
-          if(dauer[i]>-1 && dauer[i]<128)
-          {
-            Serial.print("Note on ");
-            Serial.print(i*j);
-            Serial.print(" ");
-            Serial.println(dauer[i]);
-            dauer[i]=-1;
-          }
+          // Ton ausgeben
+          if(state[i]==WAIT) state[i]=DETECTED;
         }
+        i++;
     }
-
     // Spalten wieder spannungsfrei schalten
-    digitalWrite(i, LOW);
+    digitalWrite(s, LOW);
+  }
 
+  for(i=0; i<88; i++)
+  {
+    if(state[i]==DETECTED)
+    {
+      if(dauer[i]<128) { Serial.print(i); Serial.print(","); Serial.println(dauer[i]); }
+      state[i]=PRESSED;
+    }
+    else if(state[i]==RELEASED)
+    {
+      Serial.print(i); Serial.println(",o");
+      state[i]=NOT_PRESSED;
+    }
   }
 }
