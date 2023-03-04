@@ -1,6 +1,40 @@
 // Piano Revival
 // -------------
-// Abfrage der Matrix-verschalteten Klaviatur des PX-103
+// Abfrage der Matrix-verschalteten Klaviatur des PX-103 von Technics.
+// Jede Klaviertaste hat zwei Schalter (s1 und s2), die beim Tastendruck zeitlich kurz nacheinander geschlossen werden.
+// Aus dieser Dauer wird die Anschlagstärke (in 128 Stufen) ermittelt.
+// Im Zustand TONE_ON wird das midi Kommando zum Starten des Tons übermittelt. Bei TONE_OFF entsprechend beendet.
+//
+//                 O
+//                 │
+//                 │
+//          ┌──────▼──────────────┐
+// ┌────────►   NOT_PRESSED       ◄──────────────┐
+// │        └──────┬──────────────┘              │
+// │               │                             │!s1
+// │               │ s1                          │
+// │               │                             │
+// │        ┌──────▼──────────────┐        ┌─────┴────────┐
+// │    ┌───►   COUNTING          ├────────►   TOO_SLOW   │
+// │    │   └─┬────┬──────────────┘ >max   └──────────────┘
+// │    │     │    │
+// │    └─────┘    │ s2
+// │               │
+// │        ┌──────▼──────────────┐
+// │        │   TONE_ON           │
+// │        └──────┬──────────────┘
+// │               │
+// │               │ tick
+// │               │
+// │        ┌──────▼──────────────┐
+// │        │  HOLDING            │
+// │        └──────┬──────────────┘
+// │               │
+// │tick           │ !s1
+// │               │
+// │       ┌───────▼─────────────┐
+// └───────┤    TONE_OFF         │
+//         └─────────────────────┘
 
 int dauer[88];
 const int maxDur = 128;
@@ -74,10 +108,10 @@ void loop()
 {
   int i=0;
 
-  // Iterate over all 22 Output Pins
+  // Iterate over all 22 Output Pins, beginnend bei PIN 22 (bis PIN 43)
   for(int s=22; s<44; s++)
   {
-    // Spannung anlegen, beginnend bei PIN 22 (bis PIN 43)
+    // Spannung anlegen
     digitalWrite(s, HIGH);
     delayMicroseconds(4);
 
@@ -87,6 +121,7 @@ void loop()
       bool s1= (digitalRead(j) == HIGH);
       bool s2= (digitalRead(k) == HIGH);
 
+      // Ascii-Diagramm zur Statemachine: siehe oben
       switch(state[i])
       {
         case NOT_PRESSED:
@@ -105,7 +140,7 @@ void loop()
           break;
         
         case TONE_ON:
-          // todo issue tone - parameter sind notennummer und anschlagstärke
+          // todo issue tone - parameter sind Tastennummer und Anschlagstärke
           dauer[i]=0;
           state[i]=HOLDING;
           break;
