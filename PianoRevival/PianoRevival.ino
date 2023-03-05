@@ -36,6 +36,8 @@
 // └───────┤    TONE_OFF         │
 //         └─────────────────────┘
 
+#include <digitalWriteFast.h>
+
 int dauer[88];
 const int maxDur = 128;
 
@@ -113,13 +115,13 @@ void loop()
   {
     // Spannung anlegen
     digitalWrite(s, HIGH);
-    delayMicroseconds(4);
+    delayMicroseconds(8);
 
     // Pruefe jeweils 4 Tasten mit zwei Schaltern (die an PIN 2 bis 9 hängen)
     for(int j=2,k=3; j<9;j+=2,k+=2)
     {
-      bool s1= (digitalRead(j) == HIGH);
-      bool s2= (digitalRead(k) == HIGH);
+      bool s1= (digitalReadFast(j) == HIGH);
+      bool s2= (digitalReadFast(k) == HIGH);
 
       // Ascii-Diagramm zur Statemachine: siehe oben
       switch(state[i])
@@ -141,6 +143,7 @@ void loop()
         
         case TONE_ON:
           // todo issue tone - parameter sind Tastennummer und Anschlagstärke
+          Serial.println("on");
           dauer[i]=0;
           state[i]=HOLDING;
           break;
@@ -151,6 +154,7 @@ void loop()
         
         case TONE_OFF:
           // todo issue tone off
+          Serial.println("off");
           state[i]=NOT_PRESSED;
           break;
       }
@@ -160,7 +164,3 @@ void loop()
     digitalWrite(s, LOW);
   }
 }
-
-
-
-
