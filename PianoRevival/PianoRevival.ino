@@ -44,6 +44,8 @@ const uint8_t midiChannel = 1; // Midi Channel to send notes on
 int dauer[88];
 const int maxDur = 127;
 
+const uint8_t transposeSemi =0;  // Number of Halftones to transpose the midi notes up
+
 enum State_t
 {
   NOT_PRESSED,
@@ -147,11 +149,12 @@ void loop()
         
         case TOO_SLOW:
           if(!s1) state[i]=NOT_PRESSED;
+          dauer[i] = 0;
           break;
         
         case TONE_ON:
           // todo issue tone - parameter sind Tastennummer und Anschlagstärke
-          Serial.println("on");
+          //Serial.println("on");
           keyOn(i, dauer[i]);
           dauer[i]=0;
           state[i]=HOLDING;
@@ -163,7 +166,7 @@ void loop()
         
         case TONE_OFF:
           // todo issue tone off
-          Serial.println("off");
+          //Serial.println("off");
           keyOff(i);
           state[i]=NOT_PRESSED;
           break;
@@ -180,13 +183,13 @@ void loop()
 // duration - time slots between signal on switch 1 and switch 2 (used to determine velocity)
 void keyOn(int key, int duration)
 {
-  MIDI.sendNoteOn(key2Note(key), duration2velocity(duration), midiChannel);
+  MIDI.sendNoteOn(key2Note(key)+transposeSemi, duration2velocity(duration), midiChannel);
 }
 
 // Signal end of keypress
 void keyOff(int key)
 {
-  MIDI.sendNoteOff(key2Note(key), 1, midiChannel);
+  MIDI.sendNoteOff(key2Note(key)+transposeSemi, 1, midiChannel);
 }
 
 // Convert physical key kumber to Midi note number
