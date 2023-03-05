@@ -37,9 +37,12 @@
 //         └─────────────────────┘
 
 #include <digitalWriteFast.h>
+#include <MIDI.h>
+
+const uint8_t midiChannel = 1; // Midi Channel to send notes on
 
 int dauer[88];
-const int maxDur = 128;
+const int maxDur = 127;
 
 enum State_t
 {
@@ -53,6 +56,8 @@ enum State_t
 
 State_t state[88];
 
+// Create Midi instance with Serial 1 (TX1 will be used for sending)
+MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
 void setup() 
 {
@@ -101,6 +106,9 @@ void setup()
     pinMode(42, OUTPUT);
     pinMode(43, OUTPUT);
 
+    // Init Midi Library
+    MIDI.begin();
+
     // Serielle Schnittstelle
     Serial.begin(115200);
     Serial.println("Start");
@@ -144,6 +152,7 @@ void loop()
         case TONE_ON:
           // todo issue tone - parameter sind Tastennummer und Anschlagstärke
           Serial.println("on");
+          keyOn(i, dauer[i]);
           dauer[i]=0;
           state[i]=HOLDING;
           break;
@@ -155,6 +164,7 @@ void loop()
         case TONE_OFF:
           // todo issue tone off
           Serial.println("off");
+          keyOff(i);
           state[i]=NOT_PRESSED;
           break;
       }
@@ -163,4 +173,30 @@ void loop()
     // Spannung an diesem PIN wieder wegnehmen
     digitalWrite(s, LOW);
   }
+}
+
+// Trigger Midi Not On Output
+// key - physical key number
+// duration - time slots between signal on switch 1 and switch 2 (used to determine velocity)
+void keyOn(int key, int duration)
+{
+  MIDI.sendNoteOn(key2Note(key), duration2velocity(duration), midiChannel);
+}
+
+// Signal end of keypress
+void keyOff(int key)
+{
+  MIDI.sendNoteOff(key2Note(key), 1, midiChannel);
+}
+
+// Convert physical key kumber to Midi note number
+uint8_t key2Note(int key)
+{
+  return key + 21;
+}
+
+// Maps longest duration maxDur to velocity 0 and duration of 0 to velocity of 127
+uint8_t duration2velocity(int duration)
+{
+  return maxDur - duration;
 }
