@@ -60,6 +60,15 @@ enum State_t
 
 State_t state[88];
 
+// State of the Sustain Pedal
+enum SusState_t
+{
+  NOT_PRESSED_SUS,
+  PRESSED_SUS
+};
+
+SusState_t SusState = NOT_PRESSED_SUS;
+
 // Create Midi instance with Serial 1 (TX1 will be used for sending)
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 
@@ -81,6 +90,9 @@ void setup()
     pinMode(7, INPUT);
     pinMode(8, INPUT);
     pinMode(9, INPUT);
+
+    // Input Sustain Pedal
+    pinMode(SUSTAIN_PIN, INPUT);
     
     // 22 Output Pins KB00 to KB21
     pinMode(22, OUTPUT);
@@ -134,6 +146,20 @@ void loop()
     {
       bool s1= (digitalReadFast(j) == HIGH);
       bool s2= (digitalReadFast(k) == HIGH);
+
+      bool susPed = (digitalReadFast(SUSTAIN_PIN) == LOW);
+      
+      // Check for Sustain Pedal State
+      if(susPed && SusState == NOT_PRESSED_SUS)
+      {
+        SusState = PRESSED_SUS;
+        MIDI.sendControlChange(64, 127, 1);
+      }
+      if(!susPed && SusState == PRESSED_SUS)
+      {
+        SusState = NOT_PRESSED_SUS;
+        MIDI.sendControlChange(64, 0, 1);
+      }
 
       // Ascii-Diagramm zur Statemachine: siehe oben
       switch(state[i])
