@@ -42,7 +42,9 @@
 const uint8_t midiChannel = 1; // Midi Channel to send notes on
 
 int dauer[88];
-const int maxDur = 127;
+const int maxDur = 16;
+
+const uint8_t SUSTAIN_PIN=11;
 
 const uint8_t transposeSemi =0;  // Number of Halftones to transpose the midi notes up
 
@@ -184,6 +186,7 @@ void loop()
 void keyOn(int key, int duration)
 {
   MIDI.sendNoteOn(key2Note(key)+transposeSemi, duration2velocity(duration), midiChannel);
+  //Serial.println(duration2velocity(duration));
 }
 
 // Signal end of keypress
@@ -201,5 +204,6 @@ uint8_t key2Note(int key)
 // Maps longest duration maxDur to velocity 0 and duration of 0 to velocity of 127
 uint8_t duration2velocity(int duration)
 {
-  return maxDur - duration;
+  return map(duration, 1, maxDur, 127, 1);
+  //return maxDur - duration;
 }
